@@ -491,6 +491,13 @@ unsigned int GetLegacySigOpCount(const CTransaction& tx);
  */
 unsigned int GetP2SHSigOpCount(const CTransaction& tx, const MapPrevTx& mapInputs);
 
+inline bool AllowFree(double dPriority)
+{
+    // Large (in bytes) low-priority (new, small-coin) transactions
+    // need a fee.
+    return dPriority > COIN * 2880 / 250;
+}
+
 /** Check for standard transaction types
     @return True if all outputs (scriptPubKeys) use only standard transaction forms
 */
@@ -932,7 +939,6 @@ public:
     };
 
     uint64_t nStakeModifier; // hash modifier for proof-of-stake
-    uint256 bnStakeModifierV2;
 
     // proof-of-stake specific fields
     COutPoint prevoutStake;
@@ -960,7 +966,6 @@ public:
         nMoneySupply = 0;
         nFlags = 0;
         nStakeModifier = 0;
-        bnStakeModifierV2 = 0;
         hashProof = 0;
         prevoutStake.SetNull();
         nStakeTime = 0;
@@ -985,7 +990,6 @@ public:
         nMoneySupply = 0;
         nFlags = 0;
         nStakeModifier = 0;
-        bnStakeModifierV2 = 0;
         hashProof = 0;
         if (block.IsProofOfStake())
         {
@@ -1165,7 +1169,6 @@ public:
         READWRITE(nMoneySupply);
         READWRITE(nFlags);
         READWRITE(nStakeModifier);
-        READWRITE(bnStakeModifierV2);
         if (IsProofOfStake())
         {
             READWRITE(prevoutStake);
