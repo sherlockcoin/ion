@@ -44,16 +44,7 @@ void CActiveMasternode::ManageStatus()
 
         LogPrintf("CActiveMasternode::ManageStatus() - Checking inbound connection to '%s'\n", service.ToString().c_str());
 
-          // IONNOTE: There is no logical reason to restrict this to a specific port.  Its a peer, what difference does it make.
-          /*  if(service.GetPort() != 9999) {
-                notCapableReason = "Invalid port: " + boost::lexical_cast<string>(service.GetPort()) + " -only 9999 is supported on mainnet.";
-                status = MASTERNODE_NOT_CAPABLE;
-                LogPrintf("CActiveMasternode::ManageStatus() - not capable: %s\n", notCapableReason.c_str());
-                return;
-            }
-        */
-
-        
+                  
             if(!ConnectNode((CAddress)service, service.ToString().c_str())){
                 notCapableReason = "Could not connect to " + service.ToString();
                 status = MASTERNODE_NOT_CAPABLE;
@@ -431,7 +422,7 @@ vector<COutput> CActiveMasternode::SelectCoinsMasternode()
     vector<COutput> filteredCoins;
 
     // Retrieve all possible outputs
-    pwalletMain->AvailableCoins(vCoins);
+    pwalletMain->AvailableCoinsMN(vCoins);
 
     // Filter
     BOOST_FOREACH(const COutput& out, vCoins)
@@ -464,32 +455,6 @@ vector<COutput> CActiveMasternode::SelectCoinsMasternodeForPubKey(std::string co
     }
     return filteredCoins;
 }
-
-
-/* select coins with specified transaction hash and output index */
-/*
-bool CActiveMasternode::SelectCoinsMasternode(CTxIn& vin, int64& nValueIn, CScript& pubScript, std::string strTxHash, std::string strOutputIndex)
-{
-	CWalletTx ctx;
-
-	// Convert configuration strings
-	uint256 txHash;
-	int outputIndex;
-	txHash.SetHex(strTxHash);
-	std::istringstream(strOutputIndex) >> outputIndex;
-
-	if(pwalletMain->GetTransaction(txHash, ctx)) {
-		if(ctx.vout[outputIndex].nValue == 1000*COIN) { //exactly
-			vin = CTxIn(ctx.GetHash(), outputIndex);
-			pubScript = ctx.vout[outputIndex].scriptPubKey; // the inputs PubKey
-			nValueIn = ctx.vout[outputIndex].nValue;
-		return true;
-		}
-	}
-
-    return false;
-}
-*/
 
 // when starting a masternode, this can enable to run as a hot wallet with no funds
 bool CActiveMasternode::EnableHotColdMasterNode(CTxIn& newVin, CService& newService)

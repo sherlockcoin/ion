@@ -57,8 +57,6 @@ public:
     vector<COutput> SelectCoinsMasternodeForPubKey(std::string collateralAddress);
     bool GetVinFromOutput(COutput out, CTxIn& vin, CPubKey& pubkey, CKey& secretKey);
 
-    //bool SelectCoinsMasternode(CTxIn& vin, int64& nValueIn, CScript& pubScript, std::string strTxHash, std::string strOutputIndex);
-
     // enable hot wallet mode (run a masternode with no funds)
     bool EnableHotColdMasterNode(CTxIn& vin, CService& addr);
 };

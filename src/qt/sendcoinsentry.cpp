@@ -136,7 +136,7 @@ SendCoinsRecipient SendCoinsEntry::getValue()
     rv.label = ui->addAsLabel->text();
     rv.amount = ui->payAmount->value();
 
- if (rv.address.length() > 75
+ if (rv.address.length() > 75 
         && IsStealthAddress(rv.address.toStdString()))
         rv.typeInd = AddressTableModel::AT_Stealth;
     else
