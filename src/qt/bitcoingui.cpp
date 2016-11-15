@@ -34,6 +34,8 @@
 #include "ui_interface.h"
 #include "masternodemanager.h"
 
+
+
 #ifdef USE_NATIVE_I2P
 #include "showi2paddresses.h"
 #endif
@@ -87,7 +89,6 @@ BitcoinGUI::BitcoinGUI(QWidget *parent):
     notificator(0),
     rpcConsole(0),
     prevBlocks(0),
-    spinnerFrame(0),
     nWeight(0)
 {
     resize(940, 550);
@@ -113,17 +114,38 @@ BitcoinGUI::BitcoinGUI(QWidget *parent):
     // Create the toolbars
     createToolBars();
 
-    // Create system tray icon and notification
+    // Create the tray icon (or setup the dock icon)
     createTrayIcon();
 
     // Create tabs
     overviewPage = new OverviewPage();
+   
+    transactionsPage = new QWidget(this);
+    QVBoxLayout *vbox = new QVBoxLayout();
+    transactionView = new TransactionView(this);
+    vbox->addWidget(transactionView);
+    transactionsPage->setLayout(vbox);
+
+    addressBookPage = new AddressBookPage(AddressBookPage::ForEditing, AddressBookPage::SendingTab);
+
+    receiveCoinsPage = new AddressBookPage(AddressBookPage::ForEditing, AddressBookPage::ReceivingTab);
+
+    sendCoinsPage = new SendCoinsDialog(this);
 
     signVerifyMessageDialog = new SignVerifyMessageDialog(this);
 
+    masternodeManagerPage = new MasternodeManager(this);
+
+    
     centralStackedWidget = new QStackedWidget(this);
     centralStackedWidget->setContentsMargins(0, 0, 0, 0);
     centralStackedWidget->addWidget(overviewPage);
+    centralStackedWidget->addWidget(transactionsPage);
+    centralStackedWidget->addWidget(addressBookPage);
+    centralStackedWidget->addWidget(receiveCoinsPage);
+    centralStackedWidget->addWidget(sendCoinsPage);
+    centralStackedWidget->addWidget(masternodeManagerPage);
+
 
     QWidget *centralWidget = new QWidget();
     QVBoxLayout *centralLayout = new QVBoxLayout(centralWidget);
@@ -132,6 +154,10 @@ BitcoinGUI::BitcoinGUI(QWidget *parent):
     centralLayout->addWidget(centralStackedWidget);
 
     setCentralWidget(centralWidget);
+	
+	labelBlocksIcon = new QLabel();
+    labelBlocksIcon->setVisible(false);
+    labelBlocksIcon->setPixmap(QIcon(":/icons/notsynced").pixmap(STATUSBAR_ICONSIZE, STATUSBAR_ICONSIZE));
 
     // Create status bar
     statusBar();
@@ -174,7 +200,7 @@ BitcoinGUI::BitcoinGUI(QWidget *parent):
     frameBlocksLayout->addStretch();
     frameBlocksLayout->addWidget(labelBlocksIcon);
     frameBlocksLayout->addStretch();
-
+    
 
     if (GetBoolArg("-staking", true))
     {
@@ -187,7 +213,7 @@ BitcoinGUI::BitcoinGUI(QWidget *parent):
     // Progress bar and label for blocks download
     progressBarLabel = new QLabel();
     progressBarLabel->setVisible(false);
-    progressBar = new GUIUtil::ProgressBar();
+    progressBar = new QProgressBar();
     progressBar->setAlignment(Qt::AlignCenter);
     progressBar->setVisible(false);
 
@@ -206,11 +232,10 @@ BitcoinGUI::BitcoinGUI(QWidget *parent):
     statusBar()->addWidget(progressBarLabel);
     statusBar()->addWidget(progressBar);
     statusBar()->addPermanentWidget(frameBlocks);
-    if (fUseBlackTheme)
-    {
-        statusBar()->setObjectName("statusBar");
-        statusBar()->setStyleSheet("#statusBar { background-color: qradialgradient(cx: -0.8, cy: 0, fx: -0.8, fy: 0, radius: 0.6, stop: 0 #404040, stop: 1 #101010);  }");
-    }
+    statusBar()->setObjectName("statusBar");
+    statusBar()->setStyleSheet("#statusBar { background-color: qradialgradient(cx: -0.8, cy: 0, fx: -0.8, fy: 0, radius: 0.6, stop: 0 #404040, stop: 1 #101010);  }");
+
+    syncIconMovie = new QMovie(fUseBlackTheme ? ":/movies/update_spinner_black" : ":/movies/update_spinner", "mng", this);
 
     // Clicking on a transaction on the overview page simply sends you to transaction history page
     connect(overviewPage, SIGNAL(transactionClicked(QModelIndex)), this, SLOT(gotoHistoryPage()));
@@ -238,7 +263,6 @@ BitcoinGUI::~BitcoinGUI()
         trayIcon->hide();
 #ifdef Q_OS_MAC
     delete appMenuBar;
-    MacDockIconHandler::cleanup();
 #endif
 }
 
@@ -385,7 +409,7 @@ void BitcoinGUI::createToolBars()
     toolbar = new QToolBar(tr("Tabs toolbar"));
     toolbar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     toolbar->setContextMenuPolicy(Qt::PreventContextMenu);
-
+    
 	QLabel *l = new QLabel(this);
     l->setPixmap(QPixmap(":/images/header"));
 	l->setStyleSheet("QLabel { background-color: transparent; }");
@@ -406,13 +430,13 @@ void BitcoinGUI::createToolBars()
     addToolBar(Qt::LeftToolBarArea, toolbar);
 
     netLabel = new QLabel();
-
+    
 
     toolbar->addWidget(makeToolBarSpacer());
     netLabel->setObjectName("netLabel");
     netLabel->setStyleSheet("#netLabel { background: rgb(96,96,96); color: white; text-align: center; }");
     toolbar->addWidget(netLabel);
-
+      
     int w = 0;
 
     foreach(QAction *action, toolbar->actions()) {
@@ -492,15 +516,9 @@ void BitcoinGUI::setClientModel(ClientModel *clientModel)
             {
                 trayIcon->setToolTip(tr("ion client") + QString(" ") + tr("[testnet]"));
                 trayIcon->setIcon(QIcon(":/icons/toolbar_testnet"));
+                toggleHideAction->setIcon(QIcon(":/icons/toolbar_testnet"));
             }
-
-            toggleHideAction->setIcon(QIcon(":/icons/toolbar_testnet"));
         }
-
-        // Create system tray menu (or setup the dock menu) that late to prevent users from calling actions,
-        // while the client has not yet fully loaded
-        if(trayIcon)
-            createTrayIconMenu();
 
         // Keep up to date with client
         setNumConnections(clientModel->getNumConnections());
@@ -549,26 +567,16 @@ void BitcoinGUI::setWalletModel(WalletModel *walletModel)
 
 void BitcoinGUI::createTrayIcon()
 {
-#ifndef Q_OS_MAC
-    trayIcon = new QSystemTrayIcon(this);
-
-    trayIcon->setToolTip(tr("ion client"));
-    trayIcon->setIcon(QIcon(":/icons/toolbar"));
-    trayIcon->show();
-#endif
-
-    notificator = new Notificator(qApp->applicationName(), trayIcon);
-}
-
-void BitcoinGUI::createTrayIconMenu()
-{
     QMenu *trayIconMenu;
 #ifndef Q_OS_MAC
+    trayIcon = new QSystemTrayIcon(this);
     trayIconMenu = new QMenu(this);
     trayIcon->setContextMenu(trayIconMenu);
-
+    trayIcon->setToolTip(tr("ion client"));
+    trayIcon->setIcon(QIcon(":/icons/toolbar"));
     connect(trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)),
             this, SLOT(trayIconActivated(QSystemTrayIcon::ActivationReason)));
+    trayIcon->show();
 #else
     // Note: On Mac, the dock icon is used to provide the tray's functionality.
     MacDockIconHandler *dockIconHandler = MacDockIconHandler::instance();
@@ -591,6 +599,8 @@ void BitcoinGUI::createTrayIconMenu()
     trayIconMenu->addSeparator();
     trayIconMenu->addAction(quitAction);
 #endif
+
+    notificator = new Notificator(qApp->applicationName(), trayIcon);
 }
 
 #ifndef Q_OS_MAC
@@ -718,16 +728,15 @@ void BitcoinGUI::setNumBlocks(int count)
         progressBar->setMaximum(totalSecs);
         progressBar->setValue(totalSecs - secs);
         progressBar->setVisible(true);
-
+        
         tooltip = tr("Catching up...") + QString("<br>") + tooltip;
+        labelBlocksIcon->setMovie(syncIconMovie);
         if(count != prevBlocks)
-        {
-            labelBlocksIcon->setPixmap(QIcon(QString(
-                ":/movies/spinner-%1").arg(spinnerFrame, 3, 10, QChar('0')))
-                .pixmap(STATUSBAR_ICONSIZE, STATUSBAR_ICONSIZE));
-            spinnerFrame = (spinnerFrame + 1) % SPINNER_FRAMES;
-        }
+            syncIconMovie->jumpToNextFrame();
         prevBlocks = count;
+		
+		labelBlocksIcon->show();
+        labelBlocksIcon->setPixmap(QIcon(":/icons/notsynced").pixmap(STATUSBAR_ICONSIZE, STATUSBAR_ICONSIZE));
 
         overviewPage->showOutOfSyncWarning(true);
 
@@ -1047,7 +1056,7 @@ void BitcoinGUI::setEncryptionStatus(int status)
         unlockWalletAction->setVisible(true);
         lockWalletAction->setVisible(true);
         encryptWalletAction->setEnabled(false);
-
+        
     }
     else
     {

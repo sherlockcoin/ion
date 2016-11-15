@@ -112,20 +112,11 @@ OverviewPage::OverviewPage(QWidget *parent) :
 
     ui->frameDarksend->setVisible(false);  // Hide darksend features
 
-    QScroller::grabGesture(ui->scrollArea, QScroller::LeftMouseButtonGesture);
-    ui->scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    ui->scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-
-    ui->columnTwoWidget->setContentsMargins(0,0,0,0);
-    ui->columnTwoWidget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
-    ui->columnTwoWidget->setMinimumWidth(300);
-
     // Recent transactions
     ui->listTransactions->setItemDelegate(txdelegate);
     ui->listTransactions->setIconSize(QSize(DECORATION_SIZE, DECORATION_SIZE));
     ui->listTransactions->setMinimumHeight(NUM_ITEMS * (DECORATION_SIZE + 2));
     ui->listTransactions->setAttribute(Qt::WA_MacShowFocusRect, false);
-    ui->listTransactions->setMinimumWidth(350);
 
     connect(ui->listTransactions, SIGNAL(clicked(QModelIndex)), this, SLOT(handleTransactionClicked(QModelIndex)));
 
@@ -143,8 +134,7 @@ OverviewPage::OverviewPage(QWidget *parent) :
 	qDebug() << "Dark Send Status Timer";
         timer = new QTimer(this);
         connect(timer, SIGNAL(timeout()), this, SLOT(darkSendStatus()));
-	if(!GetBoolArg("-reindexaddr", false))
-            timer->start(60000);
+        timer->start(60000);
     }
 
     if(fMasterNode || fLiteMode){

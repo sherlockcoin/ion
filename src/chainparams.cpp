@@ -79,14 +79,14 @@ public:
         assert(hashGenesisBlock == uint256("0x000001a7bb3214e3e1d2e4c256082b817a3c5dff5def37456ae16d7edaa508be"));
         assert(genesis.hashMerkleRoot == uint256("0xa1de9df44936bd1dd483e217fa17ec1881d2caf741ca67a33f6cd6850183078c"));
 		
-        vSeeds.push_back(CDNSSeedData("dnsseed.ionomy.com", "45.32.211.127"));
+        vSeeds.push_back(CDNSSeedData("45.32.211.127", "45.32.211.127"));
 
         
-        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,103);
-        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,88);
-        base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,153);
-        base58Prefixes[EXT_PUBLIC_KEY] = list_of(0x04)(0x88)(0xB2)(0x1E).convert_to_container<std::vector<unsigned char> >();
-        base58Prefixes[EXT_SECRET_KEY] = list_of(0x04)(0x88)(0xAD)(0xE4).convert_to_container<std::vector<unsigned char> >();
+        base58Prefixes[PUBKEY_ADDRESS] = list_of(103);
+        base58Prefixes[SCRIPT_ADDRESS] = list_of(88);
+        base58Prefixes[SECRET_KEY] =     list_of(153);
+        base58Prefixes[EXT_PUBLIC_KEY] = list_of(0x04)(0x88)(0xB2)(0x1E);
+        base58Prefixes[EXT_SECRET_KEY] = list_of(0x04)(0x88)(0xAD)(0xE4);
 
         convertSeed6(vFixedSeeds, pnSeed6_main, ARRAYLEN(pnSeed6_main));
 
@@ -136,11 +136,11 @@ public:
         vFixedSeeds.clear();
         vSeeds.clear();
 
-        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,127);
-        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,196);
-        base58Prefixes[SECRET_KEY]     = std::vector<unsigned char>(1,239);
-        base58Prefixes[EXT_PUBLIC_KEY] = list_of(0x04)(0x35)(0x87)(0xCF).convert_to_container<std::vector<unsigned char> >();
-        base58Prefixes[EXT_SECRET_KEY] = list_of(0x04)(0x35)(0x83)(0x94).convert_to_container<std::vector<unsigned char> >();
+        base58Prefixes[PUBKEY_ADDRESS] = list_of(127);
+        base58Prefixes[SCRIPT_ADDRESS] = list_of(196);
+        base58Prefixes[SECRET_KEY]     = list_of(239);
+        base58Prefixes[EXT_PUBLIC_KEY] = list_of(0x04)(0x35)(0x87)(0xCF);
+        base58Prefixes[EXT_SECRET_KEY] = list_of(0x04)(0x35)(0x83)(0x94);
 
         convertSeed6(vFixedSeeds, pnSeed6_test, ARRAYLEN(pnSeed6_test));
 

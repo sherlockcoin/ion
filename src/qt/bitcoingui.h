@@ -112,9 +112,9 @@ private:
     TransactionView *transactionView;
     RPCConsole *rpcConsole;
 
+    QMovie *syncIconMovie;
     /** Keep track of previous number of blocks, to detect progress */
     int prevBlocks;
-    int spinnerFrame;
 
     uint64_t nWeight;
 
@@ -124,10 +124,8 @@ private:
     void createMenuBar();
     /** Create the toolbars */
     void createToolBars();
-    /** Create system tray icon and notification */
+    /** Create system tray (notification) icon */
     void createTrayIcon();
-    /** Create system tray menu (or setup the dock menu) */
-    void createTrayIconMenu();
 
     void clearWidgets();
 

@@ -3,7 +3,7 @@
 <plist version="0.9">
 <dict>
 	<key>CFBundleIconFile</key>
-	<string>ion.icns</string>
+	<string>bitcoin.icns</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleGetInfoString</key>
@@ -13,14 +13,14 @@
 	<key>CFBundleExecutable</key>
 	<string>ion-Qt</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.ionomy.ion-Qt</string>
+	<string>co.ion.ion-Qt</string>
         <key>CFBundleURLTypes</key>
         <array>
           <dict>
             <key>CFBundleTypeRole</key>
             <string>Editor</string>
             <key>CFBundleURLName</key>
-            <string>com.ionomy.ionPayment</string>
+            <string>co.ion.ionPayment</string>
             <key>CFBundleURLSchemes</key>
             <array>
               <string>ion</string>

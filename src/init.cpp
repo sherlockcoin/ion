@@ -14,7 +14,6 @@
 #include "checkpoints.h"
 #include "activemasternode.h"
 #include "spork.h"
-#include "keepass.h"
 
 #ifdef ENABLE_WALLET
 #include "wallet.h"
@@ -580,8 +579,6 @@ bool AppInit2(boost::thread_group& threadGroup)
                 return InitError(_("wallet.dat corrupt, salvage failed"));
         }
 
-        // Initialize KeePass Integration
-        keePassInt.init();
     } // (!fDisableWallet)
 #endif // ENABLE_WALLET
     // ********************************************************* Step 6: network initialization

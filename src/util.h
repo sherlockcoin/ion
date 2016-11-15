@@ -227,10 +227,6 @@ void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet, std::map
 #ifdef WIN32
 boost::filesystem::path GetSpecialFolderPath(int nFolder, bool fCreate = true);
 #endif
-
-std::string getTimeString(int64_t timestamp, char *buffer, size_t nBuffer);
-std::string bytesReadable(uint64_t nBytes);
-
 void ShrinkDebugFile();
 void GetRandBytes(unsigned char* buf, int num);
 int GetRandInt(int nMax);
@@ -242,7 +238,9 @@ std::string FormatFullVersion();
 std::string FormatSubVersion(const std::string& name, int nClientVersion, const std::vector<std::string>& comments);
 void runCommand(std::string strCommand);
 
-
+#ifdef USE_NATIVE_I2P
+std::string FormatI2PNativeFullVersion();
+#endif
 
 
 /**

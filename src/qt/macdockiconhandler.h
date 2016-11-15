@@ -1,10 +1,5 @@
-// Copyright (c) 2011-2013 The Bitcoin Core developers
-// Copyright (c) 2016 The Ion Core developers
-// Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef ION_QT_MACDOCKICONHANDLER_H
-#define ION_QT_MACDOCKICONHANDLER_H
+#ifndef MACDOCKICONHANDLER_H
+#define MACDOCKICONHANDLER_H
 
 #include <QMainWindow>
 #include <QObject>
@@ -14,6 +9,12 @@ class QIcon;
 class QMenu;
 class QWidget;
 QT_END_NAMESPACE
+
+#ifdef __OBJC__
+@class DockIconClickEventHandler;
+#else
+class DockIconClickEventHandler;
+#endif
 
 /** Macintosh-specific dock icon handler.
  */
@@ -28,7 +29,7 @@ public:
     void setIcon(const QIcon &icon);
     void setMainWindow(QMainWindow *window);
     static MacDockIconHandler *instance();
-    static void cleanup();
+
     void handleDockIconClickEvent();
 
 signals:
@@ -37,9 +38,10 @@ signals:
 private:
     MacDockIconHandler();
 
+    DockIconClickEventHandler *m_dockIconClickEventHandler;
     QWidget *m_dummyWidget;
     QMenu *m_dockMenu;
     QMainWindow *mainWindow;
 };
 
-#endif // ION_QT_MACDOCKICONHANDLER_H
+#endif // MACDOCKICONCLICKHANDLER_H
