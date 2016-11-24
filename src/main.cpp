@@ -6,6 +6,7 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include "alert.h"
 #include "chainparams.h"
@@ -19,7 +20,7 @@
 #include "ui_interface.h"
 #include "instantx.h"
 #include "darksend.h"
-#include "masternode.h"
+#include "masternodeman.h"
 #include "spork.h"
 
 using namespace std;
@@ -168,6 +169,14 @@ bool AbortNode(const std::string &strMessage, const std::string &userMessage) {
     return false;
 }
 
+int GetHeight()
+{
+    while(true){
+        TRY_LOCK(cs_main, lockMain);
+        if(!lockMain) { MilliSleep(50); continue; }
+        return pindexBest->nHeight;
+    }
+}
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -2378,7 +2387,7 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
 
 // ----------- instantX transaction scanning -----------
 
-    if(IsSporkActive(SPORK_1_MASTERNODE_PAYMENTS_ENFORCEMENT_DEFAULT)){
+   
         BOOST_FOREACH(const CTransaction& tx, vtx){
             if (!tx.IsCoinBase()){
                 //only reject blocks when it's based on complete consensus
@@ -2392,9 +2401,7 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
                 }
             }
         }
-    } else {
-        if(fDebug) { LogPrintf("CheckBlock() : skipping transaction locking checks\n"); }
-    }
+    
 
 
     // ----------- masternode payments -----------
@@ -2402,20 +2409,15 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
     bool MasternodePayments = false;
 
     if(nTime > START_MASTERNODE_PAYMENTS) MasternodePayments = true;
-
-    if(!IsSporkActive(SPORK_1_MASTERNODE_PAYMENTS_ENFORCEMENT)){
-        MasternodePayments = false;
-        if(fDebug) LogPrintf("CheckBlock() : Masternode payment enforcement is off\n");
-    }
-
+   
     if(MasternodePayments)
     {
         LOCK2(cs_main, mempool.cs);
 
         CBlockIndex *pindex = pindexBest;
-        if(pindex != NULL){
+        if(IsProofOfStake() && pindex != NULL){
             if(pindex->GetBlockHash() == hashPrevBlock){
-                CAmount masternodePaymentAmount = GetMasternodePayment(pindex->nHeight+1, vtx[0].GetValueOut());
+                CAmount masternodePaymentAmount = GetMasternodePayment(pindex->nHeight+1, vtx[1].GetValueOut());
                 bool fIsInitialDownload = IsInitialBlockDownload();
 
                 // If we don't already have its previous block, skip masternode payment step
@@ -2433,24 +2435,24 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
                         if(fDebug) { LogPrintf("CheckBlock() : Using non-specific masternode payments %d\n", pindexBest->nHeight+1); }
                     }
 
-                    for (unsigned int i = 0; i < vtx[0].vout.size(); i++) {
-                        if(vtx[0].vout[i].nValue == masternodePaymentAmount )
+                    for (unsigned int i = 0; i < vtx[1].vout.size(); i++) {
+                        if(vtx[1].vout[i].nValue == masternodePaymentAmount )
                             foundPaymentAmount = true;
-                        if(vtx[0].vout[i].scriptPubKey == payee )
+                        if(vtx[1].vout[i].scriptPubKey == payee )
                             foundPayee = true;
-                        if(vtx[0].vout[i].nValue == masternodePaymentAmount && vtx[0].vout[i].scriptPubKey == payee)
+                        if(vtx[1].vout[i].nValue == masternodePaymentAmount && vtx[1].vout[i].scriptPubKey == payee)
                             foundPaymentAndPayee = true;
                     }
 
-                    if(!foundPaymentAndPayee) {
-                        CTxDestination address1;
-                        ExtractDestination(payee, address1);
-                        CBitcoinAddress address2(address1);
+                    CTxDestination address1;
+                    ExtractDestination(payee, address1);
+                    CBitcoinAddress address2(address1);
 
+                    if(!foundPaymentAndPayee) {
                         if(fDebug) { LogPrintf("CheckBlock() : Couldn't find masternode payment(%d|%d) or payee(%d|%s) nHeight %d. \n", foundPaymentAmount, masternodePaymentAmount, foundPayee, address2.ToString().c_str(), pindexBest->nHeight+1); }
                         return DoS(100, error("CheckBlock() : Couldn't find masternode payment or payee"));
                     } else {
-                        if(fDebug) { LogPrintf("CheckBlock() : Found masternode payment %d\n", pindexBest->nHeight+1); }
+                        LogPrintf("CheckBlock() : Found payment(%d|%d) or payee(%d|%s) nHeight %d. \n", foundPaymentAmount, masternodePaymentAmount, foundPayee, address2.ToString().c_str(), pindexBest->nHeight+1);
                     }
                 } else {
                     if(fDebug) { LogPrintf("CheckBlock() : Is initial download, skipping masternode payment check %d\n", pindexBest->nHeight+1); }
@@ -2774,6 +2776,14 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
             delete mi->second;
         }
         mapOrphanBlocksByPrev.erase(hashPrev);
+    }
+
+    if(!fLiteMode){
+        if (!fImporting && !fReindex && pindexBest->nHeight > Checkpoints::GetTotalBlocksEstimate()){
+            darkSendPool.NewBlock();
+            masternodePayments.ProcessBlock(GetHeight()+10);
+            mnscan.DoMasternodePOSChecks();
+        }
     }
 
     LogPrintf("ProcessBlock: ACCEPTED\n");
@@ -3399,10 +3409,18 @@ void static ProcessGetData(CNode* pfrom)
                 if (!pushed && inv.type == MSG_MASTERNODE_WINNER) {
                     if(mapSeenMasternodeVotes.count(inv.hash)){
                         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-                        int a = 0;
                         ss.reserve(1000);
-                        ss << mapSeenMasternodeVotes[inv.hash] << a;
+                        ss << mapSeenMasternodeVotes[inv.hash];
                         pfrom->PushMessage("mnw", ss);
+                        pushed = true;
+                    }
+                }
+                if (!pushed && inv.type == MSG_MASTERNODE_SCANNING_ERROR) {
+                    if(mapMasternodeScanningErrors.count(inv.hash)){
+                        CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+                        ss.reserve(1000);
+                        ss << mapMasternodeScanningErrors[inv.hash];
+                        pfrom->PushMessage("mnse", ss);
                         pushed = true;
                     }
                 }
@@ -3793,12 +3811,58 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
     }
 
 
-    else if (strCommand == "tx")
+    else if (strCommand == "tx"|| strCommand == "dstx")
     {
         vector<uint256> vWorkQueue;
         vector<uint256> vEraseQueue;
         CTransaction tx;
-        vRecv >> tx;
+
+        //masternode signed transaction
+        //bool allowFree = false;
+        CTxIn vin;
+        vector<unsigned char> vchSig;
+        int64_t sigTime;
+
+        if(strCommand == "tx") {
+            vRecv >> tx;
+        } else if (strCommand == "dstx") {
+            //these allow masternodes to publish a limited amount of free transactions
+            vRecv >> tx >> vin >> vchSig >> sigTime;
+
+            CMasternode* pmn = mnodeman.Find(vin);
+            if(pmn != NULL)
+            {
+                if(!pmn->allowFreeTx){
+                    //multiple peers can send us a valid masternode transaction
+                    if(fDebug) LogPrintf("dstx: Masternode sending too many transactions %s\n", tx.GetHash().ToString().c_str());
+                    return true;
+                }
+
+                std::string strMessage = tx.GetHash().ToString() + boost::lexical_cast<std::string>(sigTime);
+
+                std::string errorMessage = "";
+                if(!darkSendSigner.VerifyMessage(pmn->pubkey2, vchSig, strMessage, errorMessage)){
+                    LogPrintf("dstx: Got bad masternode address signature %s \n", vin.ToString().c_str());
+                    //pfrom->Misbehaving(20);
+                    return false;
+                }
+
+                LogPrintf("dstx: Got Masternode transaction %s\n", tx.GetHash().ToString().c_str());
+
+                //allowFree = true;
+                pmn->allowFreeTx = false;
+
+                if(!mapDarksendBroadcastTxes.count(tx.GetHash())){
+                    CDarksendBroadcastTx dstx;
+                    dstx.tx = tx;
+                    dstx.vin = vin;
+                    dstx.vchSig = vchSig;
+                    dstx.sigTime = sigTime;
+
+                    mapDarksendBroadcastTxes.insert(make_pair(tx.GetHash(), dstx));
+                }
+            }
+        }
 
         CInv inv(MSG_TX, tx.GetHash());
         pfrom->AddInventoryKnown(inv);
@@ -3879,8 +3943,12 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         if (block.nDoS) pfrom->Misbehaving(block.nDoS);
     }
 
-
-    else if (strCommand == "getaddr")
+    // This asymmetric behavior for inbound and outbound connections was introduced
+    // to prevent a fingerprinting attack: an attacker can send specific fake addresses
+    // to users' AddrMan and later request them by sending getaddr messages. 
+    // Making users (which are behind NAT and can only make outgoing connections) ignore 
+    // getaddr message mitigates the attack.
+    else if ((strCommand == "getaddr") && (pfrom->fInbound))
     {
         // Don't return addresses older than nCutOff timestamp
         int64_t nCutOff = GetTime() - (nNodeLifespan * 24 * 60 * 60);
@@ -4022,10 +4090,13 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
 
     else
     {
-        ProcessMessageDarksend(pfrom, strCommand, vRecv);
-        ProcessMessageMasternode(pfrom, strCommand, vRecv);
+
+        darkSendPool.ProcessMessageDarksend(pfrom, strCommand, vRecv);
+        mnodeman.ProcessMessage(pfrom, strCommand, vRecv);
+        ProcessMessageMasternodePayments(pfrom, strCommand, vRecv);
         ProcessMessageInstantX(pfrom, strCommand, vRecv);
         ProcessSpork(pfrom, strCommand, vRecv);
+        ProcessMessageMasternodePOS(pfrom, strCommand, vRecv);
 
         // Ignore unknown commands for extensibility
     }
