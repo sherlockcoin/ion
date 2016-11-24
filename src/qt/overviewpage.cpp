@@ -117,7 +117,6 @@ OverviewPage::OverviewPage(QWidget *parent) :
     ui->listTransactions->setIconSize(QSize(DECORATION_SIZE, DECORATION_SIZE));
     ui->listTransactions->setMinimumHeight(NUM_ITEMS * (DECORATION_SIZE + 2));
     ui->listTransactions->setAttribute(Qt::WA_MacShowFocusRect, false);
-    ui->listTransactions->setMinimumWidth(350);
 
     connect(ui->listTransactions, SIGNAL(clicked(QModelIndex)), this, SLOT(handleTransactionClicked(QModelIndex)));
 
@@ -131,18 +130,15 @@ OverviewPage::OverviewPage(QWidget *parent) :
 
     if(fLiteMode){
         ui->frameDarksend->setVisible(false);
-    } else if(!fMasterNode) {
+    } else {
 	qDebug() << "Dark Send Status Timer";
         timer = new QTimer(this);
         connect(timer, SIGNAL(timeout()), this, SLOT(darkSendStatus()));
-	if(!GetBoolArg("-reindexaddr", false))
-            timer->start(60000);
+        timer->start(60000);
     }
 
     if(fMasterNode || fLiteMode){
         ui->toggleDarksend->setText("(" + tr("Disabled") + ")");
-        ui->darksendAuto->setText("(" + tr("Disabled") + ")");
-        ui->darksendReset->setText("(" + tr("Disabled") + ")");
         ui->toggleDarksend->setEnabled(false);
     }else if(!fEnableDarksend){
         ui->toggleDarksend->setText(tr("Start Darksend"));
@@ -172,7 +168,6 @@ void OverviewPage::handleTransactionClicked(const QModelIndex &index)
 
 OverviewPage::~OverviewPage()
 {
-    if(!fLiteMode && !fMasterNode) disconnect(timer, SIGNAL(timeout()), this, SLOT(darkSendStatus()));
     delete ui;
 }
 
@@ -311,9 +306,8 @@ void OverviewPage::updateDarksendProgress()
     float denomPart = 0;
     if(denominatedBalance > 0)
     {
-        denomPart = (float)pwalletMain->GetNormalizedAnonymizedBalance() / denominatedBalance;
+        denomPart = (float)pwalletMain->GetNormalizedAnonymizedBalance() / pwalletMain->GetDenominatedBalance();
         denomPart = denomPart > 1 ? 1 : denomPart;
-        if(denomPart == 1 && nMaxToAnonymize > denominatedBalance) nMaxToAnonymize = denominatedBalance;
     }
 
     // % of fully anonymized balance
@@ -327,7 +321,7 @@ void OverviewPage::updateDarksendProgress()
 
     // apply some weights to them (sum should be <=100) and calculate the whole progress
     int progress = 80 * denomPart + 20 * anonPart;
-    if(progress >= 100) progress = 100;
+    if(progress > 100) progress = 100;
 
     ui->darksendProgress->setValue(progress);
 
@@ -391,12 +385,10 @@ void OverviewPage::darkSendStatus()
     /* ** @TODO this string creation really needs some clean ups ---vertoe ** */
     std::ostringstream convert;
 
-    if(state == POOL_STATUS_IDLE) {
-        convert << tr("Darksend is idle.").toStdString();
-    } else if(state == POOL_STATUS_ACCEPTING_ENTRIES) {
+    if(state == POOL_STATUS_ACCEPTING_ENTRIES) {
         if(entries == 0) {
             if(darkSendPool.strAutoDenomResult.size() == 0){
-                convert << tr("Mixing in progress...").toStdString();
+                convert << tr("Darksend is idle.").toStdString();
             } else {
                 convert << darkSendPool.strAutoDenomResult;
             }
@@ -415,9 +407,9 @@ void OverviewPage::darkSendStatus()
         }
     } else if(state == POOL_STATUS_SIGNING) {
         if(showingDarkSendMessage % 70 <= 10) convert << tr("Found enough users, signing ...").toStdString();
-        else if(showingDarkSendMessage % 70 <= 20) convert << tr("Found enough users, signing ( waiting)").toStdString() << ". )";
-        else if(showingDarkSendMessage % 70 <= 30) convert << tr("Found enough users, signing ( waiting.. )").toStdString() << ".. )";
-        else if(showingDarkSendMessage % 70 <= 40) convert << tr("Found enough users, signing ( waiting... )").toStdString() << "... )";
+        else if(showingDarkSendMessage % 70 <= 20) convert << tr("Found enough users, signing ( waiting. )").toStdString();
+        else if(showingDarkSendMessage % 70 <= 30) convert << tr("Found enough users, signing ( waiting.. )").toStdString();
+        else if(showingDarkSendMessage % 70 <= 40) convert << tr("Found enough users, signing ( waiting... )").toStdString();
     } else if(state == POOL_STATUS_TRANSMISSION) {
         convert << tr("Transmitting final transaction.").toStdString();
     } else if (state == POOL_STATUS_IDLE) {
@@ -429,9 +421,9 @@ void OverviewPage::darkSendStatus()
     } else if(state == POOL_STATUS_SUCCESS) {
         convert << tr("Darksend request complete:").toStdString() << " " << darkSendPool.lastMessage;
     } else if(state == POOL_STATUS_QUEUE) {
-        if(showingDarkSendMessage % 70 <= 50) convert << tr("Submitted to masternode, waiting in queue").toStdString() << ". )";
-        else if(showingDarkSendMessage % 70 <= 60) convert << tr("Submitted to masternode, waiting in queue").toStdString() << ".. )";
-        else if(showingDarkSendMessage % 70 <= 70) convert << tr("Submitted to masternode, waiting in queue").toStdString() << "... )";
+        if(showingDarkSendMessage % 70 <= 50) convert << tr("Submitted to masternode, waiting in queue .").toStdString();
+        else if(showingDarkSendMessage % 70 <= 60) convert << tr("Submitted to masternode, waiting in queue ..").toStdString();
+        else if(showingDarkSendMessage % 70 <= 70) convert << tr("Submitted to masternode, waiting in queue ...").toStdString();
     } else {
         convert << tr("Unknown state:").toStdString() << " id = " << state;
     }

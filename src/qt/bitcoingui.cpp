@@ -30,7 +30,6 @@
 #include "guiutil.h"
 #include "rpcconsole.h"
 #include "wallet.h"
-#include "main.h"
 #include "init.h"
 #include "ui_interface.h"
 #include "masternodemanager.h"
@@ -1130,9 +1129,8 @@ void BitcoinGUI::unlockWallet()
     // Unlock wallet when requested by wallet model
     if(walletModel->getEncryptionStatus() == WalletModel::Locked)
     {
-//        AskPassphraseDialog::Mode mode = sender() == unlockWalletAction ?
-//              AskPassphraseDialog::UnlockStaking : AskPassphraseDialog::Unlock;
-        AskPassphraseDialog::Mode mode = AskPassphraseDialog::UnlockStaking;
+        AskPassphraseDialog::Mode mode = sender() == unlockWalletAction ?
+              AskPassphraseDialog::UnlockStaking : AskPassphraseDialog::Unlock;
         AskPassphraseDialog dlg(mode, this);
         dlg.setModel(walletModel);
         dlg.exec();

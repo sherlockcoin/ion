@@ -8,7 +8,6 @@
 #include "walletmodel.h"
 #include "activemasternode.h"
 #include "masternodeconfig.h"
-#include "masternodeman.h"
 #include "masternode.h"
 #include "walletdb.h"
 #include "wallet.h"
@@ -46,8 +45,7 @@ MasternodeManager::MasternodeManager(QWidget *parent) :
 
     timer = new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(updateNodeList()));
-    if(!GetBoolArg("-reindexaddr", false))
-        timer->start(30000);
+    timer->start(30000);
 
     
 
@@ -153,8 +151,7 @@ void MasternodeManager::updateNodeList()
     ui->countLabel->setText("Updating...");
     ui->tableWidget->clearContents();
     ui->tableWidget->setRowCount(0);
-    std::vector<CMasternode> vMasternodes = mnodeman.GetFullMasternodeVector();
-    BOOST_FOREACH(CMasternode& mn, vMasternodes)
+    BOOST_FOREACH(CMasterNode mn, vecMasternodes) 
     {
         int mnRow = 0;
         ui->tableWidget->insertRow(0);
@@ -163,8 +160,8 @@ void MasternodeManager::updateNodeList()
 	// Address, Rank, Active, Active Seconds, Last Seen, Pub Key
 	QTableWidgetItem *activeItem = new QTableWidgetItem(QString::number(mn.IsEnabled()));
 	QTableWidgetItem *addressItem = new QTableWidgetItem(QString::fromStdString(mn.addr.ToString()));
-	QTableWidgetItem *rankItem = new QTableWidgetItem(QString::number(mnodeman.GetMasternodeRank(mn.vin, pindexBest->nHeight)));
-	QTableWidgetItem *activeSecondsItem = new QTableWidgetItem(seconds_to_DHMS((qint64)(mn.lastTimeSeen - mn.sigTime)));
+	QTableWidgetItem *rankItem = new QTableWidgetItem(QString::number(GetMasternodeRank(mn.vin, pindexBest->nHeight)));
+	QTableWidgetItem *activeSecondsItem = new QTableWidgetItem(seconds_to_DHMS((qint64)(mn.lastTimeSeen - mn.now)));
 	QTableWidgetItem *lastSeenItem = new QTableWidgetItem(QString::fromStdString(DateTimeStrFormat(mn.lastTimeSeen)));
 	
 	CScript pubkey;
@@ -183,15 +180,6 @@ void MasternodeManager::updateNodeList()
     }
 
     ui->countLabel->setText(QString::number(ui->tableWidget->rowCount()));
-
-    if(pwalletMain)
-    {
-        LOCK(cs_ion);
-        BOOST_FOREACH(PAIRTYPE(std::string, CionNodeConfig) ion, pwalletMain->mapMyionNodes)
-        {
-            updateionNode(QString::fromStdString(ion.second.sAlias), QString::fromStdString(ion.second.sAddress), QString::fromStdString(ion.second.sMasternodePrivKey), QString::fromStdString(ion.second.sCollateralAddress));
-        }
-    }
 }
 
 

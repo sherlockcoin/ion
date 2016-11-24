@@ -144,7 +144,7 @@ void OptionsDialog::setMapper()
     /* Main */
     mapper->addMapping(ui->transactionFee, OptionsModel::Fee);
     mapper->addMapping(ui->reserveBalance, OptionsModel::ReserveBalance);
-//    mapper->addMapping(ui->bitcoinAtStartup, OptionsModel::StartAtStartup);
+    mapper->addMapping(ui->bitcoinAtStartup, OptionsModel::StartAtStartup);
 
     /* Network */
     mapper->addMapping(ui->mapPortUpnp, OptionsModel::MapPortUPnP);
@@ -155,8 +155,8 @@ void OptionsDialog::setMapper()
 
     /* Window */
 #ifndef Q_OS_MAC
- //   mapper->addMapping(ui->minimizeToTray, OptionsModel::MinimizeToTray);
- //   mapper->addMapping(ui->minimizeOnClose, OptionsModel::MinimizeOnClose);
+    mapper->addMapping(ui->minimizeToTray, OptionsModel::MinimizeToTray);
+    mapper->addMapping(ui->minimizeOnClose, OptionsModel::MinimizeOnClose);
 #endif
 
     /* Display */
