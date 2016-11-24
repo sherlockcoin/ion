@@ -13,6 +13,9 @@
 #include "ui_interface.h"
 #include "checkpoints.h"
 #include "activemasternode.h"
+#include "darksend-relay.h"
+#include "masternodeman.h"
+#include "masternodeconfig.h"
 #include "spork.h"
 
 #ifdef ENABLE_WALLET
@@ -107,6 +110,7 @@ void Shutdown()
         bitdb.Flush(false);
 #endif
     StopNode();
+    DumpMasternodes();
     {
         LOCK(cs_main);
 #ifdef ENABLE_WALLET
@@ -196,6 +200,7 @@ std::string HelpMessage()
     strUsage += "  -externalip=<ip>       " + _("Specify your own public address") + "\n";
     strUsage += "  -onlynet=<net>         " + _("Only connect to nodes in network <net> (IPv4, IPv6 or Tor)") + "\n";
     strUsage += "  -discover              " + _("Discover own IP address (default: 1 when listening and no -externalip)") + "\n";
+    strUsage += "  -irc                   " + _("Find peers using internet relay chat (default: 0)") + "\n";
     strUsage += "  -listen                " + _("Accept connections from outside (default: 1 if no -proxy or -connect)") + "\n";
     strUsage += "  -bind=<addr>           " + _("Bind to given address. Use [host]:port notation for IPv6") + "\n";
     strUsage += "  -dnsseed               " + _("Query for peer addresses via DNS lookup, if low on addresses (default: 1 unless -connect)") + "\n";
@@ -237,6 +242,8 @@ std::string HelpMessage()
     strUsage += "  -logtimestamps         " + _("Prepend debug output with timestamp") + "\n";
     strUsage += "  -shrinkdebugfile       " + _("Shrink debug.log file on client startup (default: 1 when no -debug)") + "\n";
     strUsage += "  -printtoconsole        " + _("Send trace/debug info to console instead of debug.log file") + "\n";
+    strUsage += "  -regtest               " + _("Enter regression test mode, which uses a special chain in which blocks can be "
+                                                "solved instantly. This is intended for regression testing tools and app development.") + "\n";
     strUsage += "  -rpcuser=<user>        " + _("Username for JSON-RPC connections") + "\n";
     strUsage += "  -rpcpassword=<pw>      " + _("Password for JSON-RPC connections") + "\n";
     strUsage += "  -rpcport=<port>        " + _("Listen for JSON-RPC connections on <port> (default: 35105 or testnet: 20115)") + "\n";
@@ -275,6 +282,7 @@ std::string HelpMessage()
 strUsage += "\n" + _("Masternode options:") + "\n";
     strUsage += "  -masternode=<n>            " + _("Enable the client to act as a masternode (0-1, default: 0)") + "\n";
     strUsage += "  -mnconf=<file>             " + _("Specify masternode configuration file (default: masternode.conf)") + "\n";
+    strUsage += "  -mnconflock=<n>            " + _("Lock masternodes from masternode configuration file (default: 1)") + "\n";
     strUsage += "  -masternodeprivkey=<n>     " + _("Set the masternode private key") + "\n";
     strUsage += "  -masternodeaddr=<n>        " + _("Set external address:port to get to this masternode (example: address:port)") + "\n";
     strUsage += "  -masternodeminprotocol=<n> " + _("Ignore masternodes less than version (example: 70007; default : 0)") + "\n";
@@ -379,7 +387,12 @@ bool AppInit2(boost::thread_group& threadGroup)
     nDerivationMethodIndex = 0;
 
     if (!SelectParamsFromCommandLine()) {
-        return InitError("Invalid combination of -testnet.");
+        return InitError("Invalid combination of -testnet and -regtest.");
+    }
+
+    if (TestNet())
+    {
+        SoftSetBoolArg("-irc", true);
     }
 
     if (mapArgs.count("-bind")) {
@@ -388,6 +401,9 @@ bool AppInit2(boost::thread_group& threadGroup)
         if (SoftSetBoolArg("-listen", true))
             LogPrintf("AppInit2 : parameter interaction: -bind set -> setting -listen=1\n");
     }
+
+    // Process masternode config
+    masternodeConfig.read(GetMasternodeConfigFile());
 
     if (mapArgs.count("-connect") && mapMultiArgs["-connect"].size() > 0) {
         // when only connecting to trusted nodes, do not seed via DNS, or listen by default
@@ -525,7 +541,7 @@ bool AppInit2(boost::thread_group& threadGroup)
     }
 
     //ignore masternodes below protocol version
-    CMasterNode::minProtoVersion = GetArg("-masternodeminprotocol", MIN_MN_PROTO_VERSION);
+    CMasternode::minProtoVersion = GetArg("-masternodeminprotocol", MIN_PEER_PROTO_VERSION);
 
     if (fDaemon)
         fprintf(stdout, "ion server starting\n");
@@ -877,6 +893,22 @@ bool AppInit2(boost::thread_group& threadGroup)
     if (!strErrors.str().empty())
         return InitError(strErrors.str());
 
+    uiInterface.InitMessage(_("Loading masternode cache..."));
+
+    CMasternodeDB mndb;
+    CMasternodeDB::ReadResult readResult = mndb.Read(mnodeman);
+    if (readResult == CMasternodeDB::FileError)
+        LogPrintf("Missing masternode cache file - mncache.dat, will try to recreate\n");
+    else if (readResult != CMasternodeDB::Ok)
+    {
+        LogPrintf("Error reading mncache.dat: ");
+        if(readResult == CMasternodeDB::IncorrectFormat)
+            LogPrintf("magic is ok but data has invalid format, will try to recreate\n");
+        else
+            LogPrintf("file format is unknown or invalid, please fix it manually\n");
+    }
+
+
     fMasterNode = GetBoolArg("-masternode", false);
     if(fMasterNode) {
         LogPrintf("IS DARKSEND MASTER NODE\n");
@@ -907,6 +939,17 @@ bool AppInit2(boost::thread_group& threadGroup)
 
         } else {
             return InitError(_("You must specify a masternodeprivkey in the configuration. Please see documentation for help."));
+        }
+    }
+
+    if(GetBoolArg("-mnconflock", true)) {
+        LogPrintf("Locking Masternodes:\n");
+        uint256 mnTxHash;
+        BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masternodeConfig.getEntries()) {
+            LogPrintf("  %s %s\n", mne.getTxHash(), mne.getOutputIndex());
+            mnTxHash.SetHex(mne.getTxHash());
+            COutPoint outpoint = COutPoint(mnTxHash, boost::lexical_cast<unsigned int>(mne.getOutputIndex()));
+            pwalletMain->LockCoin(outpoint);
         }
     }
 

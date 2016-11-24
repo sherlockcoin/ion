@@ -44,9 +44,11 @@ public:
     bool StopMasterNode(std::string strService, std::string strKeyMasternode, std::string& errorMessage); // stop remote masternode
     bool StopMasterNode(CTxIn vin, CService service, CKey key, CPubKey pubKey, std::string& errorMessage); // stop any masternode
 
-    bool Register(std::string strService, std::string strKey, std::string txHash, std::string strOutputIndex, std::string& errorMessage); // register remote masternode
-    bool Register(CTxIn vin, CService service, CKey key, CPubKey pubKey, CKey keyMasternode, CPubKey pubKeyMasternode, std::string &retErrorMessage); // register any masternode
-    bool RegisterByPubKey(std::string strService, std::string strKeyMasternode, std::string collateralAddress, std::string& errorMessage); // register for a specific collateral address
+    /// Register remote Masternode
+    bool Register(std::string strService, std::string strKey, std::string txHash, std::string strOutputIndex, std::string strDonationAddress, std::string strDonationPercentage, std::string& errorMessage); 
+    /// Register any Masternode
+    bool Register(CTxIn vin, CService service, CKey key, CPubKey pubKey, CKey keyMasternode, CPubKey pubKeyMasternode, CScript donationAddress, int donationPercentage, std::string &retErrorMessage); 
+    bool RegisterByPubKey(std::string strService, std::string strKeyMasternode, std::string collateralAddress, std::string& errorMessage); // register for a specific collateral address    
 
     // get 1000DRK input that can be used for the masternode
     bool GetMasterNodeVin(CTxIn& vin, CPubKey& pubkey, CKey& secretKey);
@@ -56,8 +58,6 @@ public:
     vector<COutput> SelectCoinsMasternode();
     vector<COutput> SelectCoinsMasternodeForPubKey(std::string collateralAddress);
     bool GetVinFromOutput(COutput out, CTxIn& vin, CPubKey& pubkey, CKey& secretKey);
-
-    //bool SelectCoinsMasternode(CTxIn& vin, int64& nValueIn, CScript& pubScript, std::string strTxHash, std::string strOutputIndex);
 
     // enable hot wallet mode (run a masternode with no funds)
     bool EnableHotColdMasterNode(CTxIn& vin, CService& addr);

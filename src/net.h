@@ -75,6 +75,7 @@ enum
     LOCAL_IF,     // address a local interface listens on
     LOCAL_BIND,   // address explicit bound to
     LOCAL_UPNP,   // address reported by UPnP
+    LOCAL_IRC,    // address reported by IRC (deprecated)
     LOCAL_MANUAL, // address explicitly specified (-externalip=)
 
     LOCAL_MAX
@@ -104,7 +105,8 @@ enum {
     MSG_TXLOCK_REQUEST,
     MSG_TXLOCK_VOTE,
     MSG_SPORK,
-    MSG_MASTERNODE_WINNER
+    MSG_MASTERNODE_WINNER,
+    MSG_MASTERNODE_SCANNING_ERROR
 };
 
 extern bool fDiscover;
@@ -722,6 +724,37 @@ template<typename T1, typename T2, typename T3, typename T4, typename T5, typena
             throw;
         }
     }
+    template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8, typename T9, typename T10, typename T11>
+    void PushMessage(const char* pszCommand, const T1& a1, const T2& a2, const T3& a3, const T4& a4, const T5& a5, const T6& a6, const T7& a7, const T8& a8, const T9& a9, const T10& a10, const T11& a11)
+   {
+        try
+        {
+            BeginMessage(pszCommand);
+            ssSend << a1 << a2 << a3 << a4 << a5 << a6 << a7 << a8 << a9 << a10 << a11;
+            EndMessage();
+        }
+        catch (...)
+        {
+            AbortMessage();
+           throw;
+        }
+    }
+
+    template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8, typename T9, typename T10, typename T11, typename T12>
+    void PushMessage(const char* pszCommand, const T1& a1, const T2& a2, const T3& a3, const T4& a4, const T5& a5, const T6& a6, const T7& a7, const T8& a8, const T9& a9, const T10& a10, const T11& a11, const T12& a12)
+    {
+        try
+        {
+            BeginMessage(pszCommand);
+            ssSend << a1 << a2 << a3 << a4 << a5 << a6 << a7 << a8 << a9 << a10 << a11 << a12;
+            EndMessage();
+        }
+        catch (...)
+        {
+            AbortMessage();
+            throw;
+        }
+    }
 
     bool HasFulfilledRequest(std::string strRequest)
     {
@@ -784,15 +817,6 @@ class CTransaction;
 void RelayTransaction(const CTransaction& tx, const uint256& hash);
 void RelayTransaction(const CTransaction& tx, const uint256& hash, const CDataStream& ss);
 void RelayTransactionLockReq(const CTransaction& tx, const uint256& hash, bool relayToAll=false);
-void RelayDarkSendFinalTransaction(const int sessionID, const CTransaction& txNew);
-void RelayDarkSendIn(const std::vector<CTxIn>& in, const int64_t& nAmount, const CTransaction& txCollateral, const std::vector<CTxOut>& out);
-void RelayDarkSendStatus(const int sessionID, const int newState, const int newEntriesCount, const int newAccepted, const std::string error="");
-void RelayDarkSendElectionEntry(const CTxIn vin, const CService addr, const std::vector<unsigned char> vchSig, const int64_t nNow, const CPubKey pubkey, const CPubKey pubkey2, const int count, const int current, const int64_t lastUpdated, const int protocolVersion);
-void SendDarkSendElectionEntry(const CTxIn vin, const CService addr, const std::vector<unsigned char> vchSig, const int64_t nNow, const CPubKey pubkey, const CPubKey pubkey2, const int count, const int current, const int64_t lastUpdated, const int protocolVersion);
-void RelayDarkSendElectionEntryPing(const CTxIn vin, const std::vector<unsigned char> vchSig, const int64_t nNow, const bool stop);
-void SendDarkSendElectionEntryPing(const CTxIn vin, const std::vector<unsigned char> vchSig, const int64_t nNow, const bool stop);
-void RelayDarkSendCompletedTransaction(const int sessionID, const bool error, const std::string errorMessage);
-void RelayDarkSendMasterNodeContestant();
 
 /** Access to the (IP) address database (peers.dat) */
 class CAddrDB
