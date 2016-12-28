@@ -27,9 +27,6 @@ public:
 		std::string privKey;
 		std::string txHash;
 		std::string outputIndex;
-		std::string donationAddress;
-		std::string donationPercentage;
-
 
 	public:
 
@@ -51,14 +48,6 @@ public:
 
 		const std::string& getOutputIndex() const {
 			return outputIndex;
-		}
-
-		const std::string& getDonationAddress() const {
-			return donationAddress;
-		}
-
-		const std::string& getDonationPercentage() const {
-			return donationPercentage;
 		}
 
 		void setOutputIndex(const std::string& outputIndex) {
@@ -95,7 +84,7 @@ public:
 	}
 
 	void clear();
-    bool read(boost::filesystem::path path);
+    bool read(std::string& strErr);
 	void add(std::string alias, std::string ip, std::string privKey, std::string txHash, std::string outputIndex);
 
 	std::vector<CMasternodeEntry>& getEntries() {

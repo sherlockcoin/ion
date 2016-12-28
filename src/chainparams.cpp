@@ -70,7 +70,7 @@ public:
         genesis.hashPrevBlock = 0;
         genesis.hashMerkleRoot = genesis.BuildMerkleTree();
         genesis.nVersion = 1;
-        genesis.nTime    = 1458750507;
+		genesis.nTime    = 1458750507;
         genesis.nBits    = bnProofOfWorkLimit.GetCompact();
         genesis.nNonce   = 468977;
         

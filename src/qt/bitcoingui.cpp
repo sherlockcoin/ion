@@ -30,7 +30,6 @@
 #include "guiutil.h"
 #include "rpcconsole.h"
 #include "wallet.h"
-#include "main.h"
 #include "init.h"
 #include "ui_interface.h"
 #include "masternodemanager.h"

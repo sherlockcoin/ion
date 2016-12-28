@@ -25,7 +25,6 @@ public:
     OptionsModel *getOptionsModel();
 
     int getNumConnections() const;
-    QString getMasternodeCountString() const;
     int getNumBlocks() const;
     int getNumBlocksAtStartup();
 
@@ -64,11 +63,10 @@ private:
     OptionsModel *optionsModel;
 
     int cachedNumBlocks;
-    QString cachedMasternodeCountString;
+
     int numBlocksAtStartup;
 
     QTimer *pollTimer;
-    QTimer *pollMnTimer;
 
     void subscribeToCoreSignals();
     void unsubscribeFromCoreSignals();
@@ -79,7 +77,6 @@ signals:
     void numI2PConnectionsChanged(int count);
 #endif
     void numBlocksChanged(int count);
-    void strMasternodesChanged(const QString &strMasternodes);
     void alertsChanged(const QString &warnings);
     void bytesChanged(quint64 totalBytesIn, quint64 totalBytesOut);
 
@@ -88,7 +85,6 @@ signals:
 
 public slots:
     void updateTimer();
-    void updateMnTimer();
     void updateNumConnections(int numConnections);
     void updateAlert(const QString &hash, int status);
 #ifdef USE_NATIVE_I2P
